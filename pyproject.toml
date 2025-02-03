@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "task-rubric-framework"
+version = "0.1.0"
+description = "Design, validate, and manage evaluation tasks and binary rubrics for agentic coding systems"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml==6.0.2",
+    "click==8.1.7",
+    "jsonschema==4.23.0",
+    "rich==13.9.4",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.3.4",
+    "pytest-cov==6.0.0",
+]
+
+[project.scripts]
+rubric = "rubric.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
