@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rubric.schema.json",
+  "title": "Rubric",
+  "description": "Binary scoring rubric for one evaluation task.",
+  "type": "object",
+  "required": ["task_id", "version", "dimensions"],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Must match the 'id' field in the corresponding task YAML."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "description": { "type": "string" },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Scoring dimensions; each is binary (pass or fail).",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category", "criterion", "weight"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["functionality", "test_results", "security", "requirements", "code_quality"]
+          },
+          "criterion": {
+            "type": "string",
+            "description": "Exact, observable condition; must be automatable."
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Relative weight (all weights should sum to 1.0)."
+          },
+          "verification": {
+            "type": "string",
+            "description": "Shell command or procedure used to verify this dimension."
+          },
+          "disqualifying": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, failing this dimension scores the entire submission 0."
+          }
+        }
+      }
+    },
+    "difficulty_notes": {
+      "type": "string",
+      "description": "Notes on how difficulty was calibrated (model attempts, removed ambiguities)."
+    },
+    "removed_criteria": {
+      "type": "array",
+      "description": "Criteria removed due to ambiguity or environment-dependence.",
+      "items": {
+        "type": "object",
+        "required": ["criterion", "reason"],
+        "properties": {
+          "criterion": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}
