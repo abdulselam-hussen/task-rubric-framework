@@ -1,0 +1,98 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Rubric Template  (rubric.schema.json v1.0)
+# Binary scoring – each dimension is either PASS (full weight) or FAIL (0).
+# All weights should sum to 1.0.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# REQUIRED ─ must match the task's 'id' field
+task_id: "your-task-id-001"
+version: "1.0"
+description: "Rubric for the null-dereference fix task."
+
+dimensions:
+
+  # ── Functionality ───────────────────────────────────────────────────────────
+  - id: d-func-1
+    name: "All tests pass"
+    category: functionality
+    criterion: "pytest tests/ exits with code 0 and 0 failures"
+    weight: 0.30
+    verification: "cd /workspace && python -m pytest tests/ -q --tb=short 2>&1"
+    disqualifying: true
+
+  - id: d-func-2
+    name: "Fix handles None response"
+    category: functionality
+    criterion: "pipeline.process(None) returns [] without raising AttributeError"
+    weight: 0.20
+    verification: "cd /workspace && python -c \"from src.pipeline import process; assert process(None) == []\""
+
+  # ── Test Results ────────────────────────────────────────────────────────────
+  - id: d-test-1
+    name: "No regression in existing tests"
+    category: test_results
+    criterion: "test_happy_path and test_empty_input still pass"
+    weight: 0.15
+    verification: "cd /workspace && python -m pytest tests/test_pipeline.py::test_happy_path tests/test_pipeline.py::test_empty_input -v"
+
+  - id: d-test-2
+    name: "New regression test added"
+    category: test_results
+    criterion: "A test named test_none_response exists and passes"
+    weight: 0.10
+    verification: "cd /workspace && python -m pytest -k test_none_response -v"
+
+  # ── Security ─────────────────────────────────────────────────────────────────
+  - id: d-sec-1
+    name: "No secrets or credentials committed"
+    category: security
+    criterion: "git log shows no new files containing API keys or passwords"
+    weight: 0.10
+    verification: "cd /workspace && git diff HEAD~1 -- '*.py' | grep -iE '(api_key|password|secret)=' | wc -l | xargs test 0 -eq"
+
+  # ── Requirements Compliance ─────────────────────────────────────────────────
+  - id: d-req-1
+    name: "Public API unchanged"
+    category: requirements
+    criterion: "The signature of pipeline.process() is unchanged"
+    weight: 0.10
+    verification: "cd /workspace && python -c \"import inspect; from src.pipeline import process; print(inspect.signature(process))\""
+
+  - id: d-req-2
+    name: "No new dependencies introduced"
+    category: requirements
+    criterion: "requirements.txt is unchanged"
+    weight: 0.05
+    verification: "cd /workspace && git diff HEAD~1 -- requirements.txt | grep '^+' | grep -v '^+++' | wc -l | xargs test 0 -eq"
+
+  # ── Code Quality ─────────────────────────────────────────────────────────────
+  - id: d-qual-1
+    name: "No new linting errors"
+    category: code_quality
+    criterion: "flake8 src/ exits with code 0"
+    weight: 0.05
+    verification: "cd /workspace && flake8 src/ --max-line-length=100"
+
+  - id: d-qual-2
+    name: "Fix is minimal (no unrelated changes)"
+    category: code_quality
+    criterion: "git diff shows changes only in src/pipeline.py and tests/"
+    weight: 0.05
+    verification: "cd /workspace && git diff HEAD~1 --name-only | grep -vE '^(src/pipeline.py|tests/)' | wc -l | xargs test 0 -eq"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Difficulty calibration notes
+# ──────────────────────────────────────────────────────────────────────────────
+difficulty_notes: |
+  Three model attempts were run before finalising this rubric.
+  - GPT-4o passed functionality but missed the edge case of empty dict input.
+  - Claude 3.5 Sonnet passed all dimensions on the first attempt – difficulty
+    raised from 'easy' to 'medium' by adding hidden_edge_cases hec-2.
+  - Criteria requiring manual code review were automated or removed.
+
+removed_criteria:
+  - criterion: "Code is idiomatic Python"
+    reason: "Subjective; cannot be reliably automated without a style oracle."
+  - criterion: "Fix uses the most efficient algorithm"
+    reason: "Ambiguous at this data scale; causes false failures."
