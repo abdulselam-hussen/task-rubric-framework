@@ -1,0 +1,76 @@
+id: "fix-null-dereference-001"
+version: "1.0"
+name: "Fix null-pointer dereference in data pipeline"
+description: |
+  The ETL pipeline in src/pipeline.py crashes with AttributeError when the
+  upstream API returns None instead of a dict. This happens in production
+  whenever the external service is temporarily unavailable. The function
+  pipeline.process() must gracefully handle None and return an empty list
+  instead of raising. All five existing unit tests must continue to pass.
+  Do not change the public signature of process().
+user_intent: "I want the pipeline to handle None API responses without crashing."
+category: debugging
+difficulty: easy
+tags:
+  - null-safety
+  - defensive-programming
+  - data-pipeline
+
+repo_url: "https://github.com/example/sample-pipeline"
+repo_ref: "main"
+
+milestones:
+  - id: 1
+    description: "Run the existing test suite to confirm the crash is reproducible."
+  - id: 2
+    description: "Locate the None-dereference in src/pipeline.py."
+  - id: 3
+    description: "Add a guard that returns [] when the input is None."
+  - id: 4
+    description: "Verify all five existing unit tests still pass."
+  - id: 5
+    description: "Add test_none_response to tests/test_pipeline.py."
+    optional: true
+
+acceptance_criteria:
+  - id: ac-1
+    criterion: "pytest tests/ exits with code 0 and reports 0 failures"
+    automated: true
+  - id: ac-2
+    criterion: "src/pipeline.py exists and has been modified"
+    automated: true
+  - id: ac-3
+    criterion: "pipeline.process(None) returns [] without raising"
+    automated: true
+  - id: ac-4
+    criterion: "flake8 src/ exits with code 0"
+    automated: true
+
+hidden_edge_cases:
+  - id: hec-1
+    description: "Upstream returns an empty dict {}"
+    input: {}
+    expected: "process({}) returns [] without raising"
+  - id: hec-2
+    description: "Upstream returns a list instead of a dict"
+    input: [1, 2, 3]
+    expected: "process([1,2,3]) raises TypeError with a clear message"
+  - id: hec-3
+    description: "Upstream returns a dict missing the 'items' key"
+    input: {"status": "ok"}
+    expected: "process({'status': 'ok'}) returns [] without raising"
+
+setup_commands:
+  - "pip install -r requirements.txt"
+
+eval_commands:
+  - "python -m pytest tests/ -q 2>&1"
+  - "flake8 src/ --max-line-length=100 2>&1"
+
+expected_artifacts:
+  - "src/pipeline.py"
+
+timeout_seconds: 120
+
+reference_solution: "../solutions/fix-null-dereference-001.py"
+rubric: "../rubrics/fix-null-dereference-001.yaml"
