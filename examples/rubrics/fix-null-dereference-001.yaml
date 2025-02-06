@@ -1,0 +1,115 @@
+task_id: "fix-null-dereference-001"
+version: "1.0"
+description: "Binary rubric for the null-dereference debugging task."
+
+dimensions:
+
+  # ── Functionality ───────────────────────────────────────────────────────────
+
+  - id: d-func-1
+    name: "All existing tests pass"
+    category: functionality
+    criterion: "pytest tests/ exits with code 0 and reports 0 failures"
+    weight: 0.30
+    verification: "cd /workspace && python -m pytest tests/ -q --tb=short 2>&1"
+    disqualifying: true
+
+  - id: d-func-2
+    name: "None input returns empty list"
+    category: functionality
+    criterion: "pipeline.process(None) returns [] without raising AttributeError"
+    weight: 0.20
+    verification: |
+      cd /workspace && python -c "
+      from src.pipeline import process
+      result = process(None)
+      assert result == [], f'Expected [], got {result!r}'
+      print('PASS')
+      "
+
+  - id: d-func-3
+    name: "Empty dict input returns empty list"
+    category: functionality
+    criterion: "pipeline.process({}) returns [] without raising"
+    weight: 0.10
+    verification: |
+      cd /workspace && python -c "
+      from src.pipeline import process
+      result = process({})
+      assert result == [], f'Expected [], got {result!r}'
+      print('PASS')
+      "
+
+  # ── Test Results ────────────────────────────────────────────────────────────
+
+  - id: d-test-1
+    name: "Named regression tests still pass"
+    category: test_results
+    criterion: "test_happy_path and test_empty_input both pass"
+    weight: 0.15
+    verification: |
+      cd /workspace && python -m pytest \
+        tests/test_pipeline.py::test_happy_path \
+        tests/test_pipeline.py::test_empty_input \
+        -v 2>&1
+
+  # ── Security ─────────────────────────────────────────────────────────────────
+
+  - id: d-sec-1
+    name: "No secrets committed"
+    category: security
+    criterion: "git diff HEAD~1 introduces no API keys, passwords, or secrets"
+    weight: 0.05
+    verification: |
+      cd /workspace && git diff HEAD~1 -- '*.py' \
+        | grep -iE '(api_key|password|secret)\s*=' \
+        | wc -l | xargs -I{} test {} -eq 0 && echo PASS || echo FAIL
+
+  # ── Requirements Compliance ─────────────────────────────────────────────────
+
+  - id: d-req-1
+    name: "Public API signature unchanged"
+    category: requirements
+    criterion: "inspect.signature(pipeline.process) is unchanged"
+    weight: 0.10
+    verification: |
+      cd /workspace && python -c "
+      import inspect
+      from src.pipeline import process
+      sig = str(inspect.signature(process))
+      assert 'data' in sig, f'Signature changed: {sig}'
+      print('PASS:', sig)
+      "
+
+  - id: d-req-2
+    name: "No new runtime dependencies"
+    category: requirements
+    criterion: "requirements.txt is unchanged from HEAD~1"
+    weight: 0.05
+    verification: |
+      cd /workspace && git diff HEAD~1 -- requirements.txt \
+        | grep '^+[^+]' | wc -l | xargs -I{} test {} -eq 0 && echo PASS || echo FAIL
+
+  # ── Code Quality ─────────────────────────────────────────────────────────────
+
+  - id: d-qual-1
+    name: "No new linting errors"
+    category: code_quality
+    criterion: "flake8 src/ exits with code 0"
+    weight: 0.05
+    verification: "cd /workspace && flake8 src/ --max-line-length=100 2>&1"
+
+
+difficulty_notes: |
+  Initial attempts by GPT-4o and Claude 3.5 Sonnet both passed d-func-1 and
+  d-func-2 but missed d-func-3 (empty dict). A 'dict missing the items key'
+  edge case was originally included but removed because it was
+  environment-dependent (the key name varies across fixture versions).
+  Difficulty stayed at 'easy' after adding hec-1 through hec-3 – models
+  handled the extra cases once prompted to think about edge inputs.
+
+removed_criteria:
+  - criterion: "Fix uses .get() rather than try/except"
+    reason: "Subjective style preference; both are correct and automatable only with AST inspection."
+  - criterion: "items key missing triggers a warning log"
+    reason: "Environment-dependent; test fixture does not configure logging consistently."
