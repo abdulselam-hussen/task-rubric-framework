@@ -1,0 +1,98 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Task Template  (task.schema.json v1.0)
+# Copy this file, fill in all REQUIRED fields, and delete these comments.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# REQUIRED ─ unique kebab-case identifier
+id: "your-task-id-001"
+
+# REQUIRED ─ schema version (keep as-is unless schema changes)
+version: "1.0"
+
+# REQUIRED ─ short human-readable name (5–120 chars)
+name: "Short descriptive task name"
+
+# REQUIRED ─ full problem statement shown to the agent
+description: |
+  Detailed description of what the agent must accomplish.
+  Include relevant context: which module is broken, what the expected
+  behaviour is, and any constraints (e.g. "do not change the public API").
+
+# REQUIRED ─ one-sentence goal from the user's perspective
+user_intent: "I want the pipeline to handle None responses without crashing."
+
+# OPTIONAL metadata
+category: debugging      # debugging | feature | refactor | security | infrastructure | maintenance
+difficulty: medium       # easy | medium | hard
+tags:
+  - null-safety
+  - defensive-programming
+
+# OPTIONAL – repository to evaluate against
+repo_url: "https://github.com/your-org/your-repo"
+repo_ref: "main"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MILESTONES – ordered steps the agent should take
+# ──────────────────────────────────────────────────────────────────────────────
+milestones:
+  - id: 1
+    description: "Reproduce the crash with the existing test suite."
+  - id: 2
+    description: "Identify the root cause in src/pipeline.py."
+  - id: 3
+    description: "Apply a minimal fix that handles the None case."
+  - id: 4
+    description: "Verify all existing tests still pass."
+  - id: 5
+    description: "Add a regression test for the None-response scenario."
+    optional: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ACCEPTANCE CRITERIA – binary observable conditions (all must be true to pass)
+# ──────────────────────────────────────────────────────────────────────────────
+acceptance_criteria:
+  - id: ac-1
+    criterion: "pytest tests/ exits with code 0"
+    automated: true
+  - id: ac-2
+    criterion: "src/pipeline.py exists and has been modified"
+    automated: true
+  - id: ac-3
+    criterion: "No new linting errors introduced (flake8 exits 0)"
+    automated: true
+  - id: ac-4
+    criterion: "The fix handles both None and missing keys gracefully"
+    automated: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HIDDEN EDGE CASES – not disclosed to the agent; used for depth scoring
+# ──────────────────────────────────────────────────────────────────────────────
+hidden_edge_cases:
+  - id: hec-1
+    description: "Upstream returns an empty dict {}"
+    input: {}
+    expected: "pipeline returns empty list without raising"
+  - id: hec-2
+    description: "Upstream returns a list instead of a dict"
+    input: [1, 2, 3]
+    expected: "pipeline raises TypeError with a clear message"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# EVALUATION HARNESS SETTINGS
+# ──────────────────────────────────────────────────────────────────────────────
+setup_commands:
+  - "pip install -r requirements.txt"
+
+eval_commands:
+  - "python -m pytest tests/ -q"
+  - "flake8 src/"
+
+expected_artifacts:
+  - "src/pipeline.py"
+
+timeout_seconds: 180
+
+# Paths to companion files (relative to this task file)
+reference_solution: "../solutions/your-task-id-001.py"
+rubric: "../rubrics/your-task-id-001.yaml"
