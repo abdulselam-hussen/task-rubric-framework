@@ -1,0 +1,142 @@
+task_id: "add-jwt-auth-002"
+version: "1.0"
+description: "Binary rubric for the JWT authentication feature task."
+
+dimensions:
+
+  # ── Functionality ───────────────────────────────────────────────────────────
+
+  - id: d-func-1
+    name: "Full test suite passes"
+    category: functionality
+    criterion: "pytest tests/ exits with code 0"
+    weight: 0.25
+    verification: "cd /workspace && python -m pytest tests/ -q --tb=short 2>&1"
+    disqualifying: true
+
+  - id: d-func-2
+    name: "Unauthenticated request is rejected"
+    category: functionality
+    criterion: "GET /api/users without Authorization header returns 401"
+    weight: 0.15
+    verification: |
+      cd /workspace && python -c "
+      from app import create_app
+      app = create_app()
+      client = app.test_client()
+      resp = client.get('/api/users')
+      assert resp.status_code == 401, f'Expected 401, got {resp.status_code}'
+      print('PASS')
+      "
+
+  - id: d-func-3
+    name: "Valid token accepted"
+    category: functionality
+    criterion: "GET /api/users with a valid Bearer token returns 200"
+    weight: 0.15
+    verification: |
+      cd /workspace && python -c "
+      import jwt, os
+      from app import create_app
+      app = create_app()
+      secret = os.environ.get('JWT_SECRET', 'test-secret')
+      token = jwt.encode({'sub': 'testuser'}, secret, algorithm='HS256')
+      client = app.test_client()
+      resp = client.get('/api/users', headers={'Authorization': f'Bearer {token}'})
+      assert resp.status_code == 200, f'Expected 200, got {resp.status_code}'
+      print('PASS')
+      "
+
+  # ── Test Results ────────────────────────────────────────────────────────────
+
+  - id: d-test-1
+    name: "test_auth.py covers four token scenarios"
+    category: test_results
+    criterion: "tests/test_auth.py contains tests for valid, missing, expired, and tampered tokens"
+    weight: 0.10
+    verification: |
+      cd /workspace && python -m pytest tests/test_auth.py -v 2>&1 \
+        | grep -E '(PASSED|FAILED)' | wc -l | xargs -I{} test {} -ge 4 && echo PASS
+
+  - id: d-test-2
+    name: "Pre-existing user tests unbroken"
+    category: test_results
+    criterion: "All tests in tests/test_users.py still pass"
+    weight: 0.10
+    verification: "cd /workspace && python -m pytest tests/test_users.py -v 2>&1"
+
+  # ── Security ─────────────────────────────────────────────────────────────────
+
+  - id: d-sec-1
+    name: "Expired token rejected"
+    category: security
+    criterion: "A token with exp in the past returns 401"
+    weight: 0.10
+    verification: |
+      cd /workspace && python -c "
+      import jwt, os, time
+      from app import create_app
+      app = create_app()
+      secret = os.environ.get('JWT_SECRET', 'test-secret')
+      token = jwt.encode({'sub': 'u', 'exp': int(time.time()) - 3600}, secret, algorithm='HS256')
+      client = app.test_client()
+      resp = client.get('/api/users', headers={'Authorization': f'Bearer {token}'})
+      assert resp.status_code == 401, f'Expected 401, got {resp.status_code}'
+      print('PASS')
+      "
+
+  - id: d-sec-2
+    name: "Tampered token rejected"
+    category: security
+    criterion: "A token signed with a different secret returns 401"
+    weight: 0.05
+    verification: |
+      cd /workspace && python -c "
+      import jwt
+      from app import create_app
+      app = create_app()
+      token = jwt.encode({'sub': 'u'}, 'wrong-secret', algorithm='HS256')
+      client = app.test_client()
+      resp = client.get('/api/users', headers={'Authorization': f'Bearer {token}'})
+      assert resp.status_code == 401, f'Expected 401, got {resp.status_code}'
+      print('PASS')
+      "
+
+  # ── Requirements Compliance ─────────────────────────────────────────────────
+
+  - id: d-req-1
+    name: "auth module created"
+    category: requirements
+    criterion: "app/auth.py exists and is importable"
+    weight: 0.05
+    verification: "cd /workspace && python -c \"from app.auth import verify_token; print('PASS')\""
+
+  - id: d-req-2
+    name: "401 response has JSON error body"
+    category: requirements
+    criterion: "401 response Content-Type is application/json"
+    weight: 0.05
+    verification: |
+      cd /workspace && python -c "
+      from app import create_app
+      app = create_app()
+      client = app.test_client()
+      resp = client.get('/api/users')
+      assert 'application/json' in resp.content_type, f'Got {resp.content_type}'
+      print('PASS')
+      "
+
+
+difficulty_notes: |
+  Two model attempts were run. Both passed d-func-1 (all tests) and d-req-1
+  (auth module created) but failed d-sec-1 (expired token) on the first attempt
+  because they used a simple time check instead of PyJWT's built-in exp
+  validation. The task description was updated to explicitly mention PyJWT's
+  expiry handling. The case-insensitive Bearer prefix (hec-3) was caught only
+  by Claude 3.5 Sonnet; GPT-4o required a second attempt.
+
+removed_criteria:
+  - criterion: "Tokens are rotated every 24 hours"
+    reason: "Infrastructure-dependent; requires a scheduler not present in the test environment."
+  - criterion: "Rate limiting applied to the auth endpoint"
+    reason: "Out of scope; requires middleware configuration beyond a single-file fix."
