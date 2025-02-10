@@ -1,0 +1,87 @@
+id: "add-jwt-auth-002"
+version: "1.0"
+name: "Add JWT authentication to /api/users endpoint"
+description: |
+  The /api/users route in app/routes.py currently has no authentication.
+  Any unauthenticated request receives a 200 response with the full user list,
+  which is a security vulnerability. Add JWT bearer-token validation using the
+  PyJWT library (already in requirements.txt). Requests missing a valid token
+  must receive a 401 response. The existing tests in tests/test_users.py must
+  keep passing. Create app/auth.py to house the token-validation logic, and
+  add tests/test_auth.py covering at least: valid token accepted, missing token
+  rejected (401), expired token rejected (401), tampered token rejected (401).
+user_intent: "I want the /api/users endpoint to reject unauthenticated requests with a 401."
+category: security
+difficulty: medium
+tags:
+  - authentication
+  - jwt
+  - flask
+  - api-security
+
+repo_url: "https://github.com/example/sample-api"
+repo_ref: "feature/auth"
+
+milestones:
+  - id: 1
+    description: "Confirm the current endpoint returns 200 without a token."
+  - id: 2
+    description: "Create app/auth.py with a verify_token() function using PyJWT."
+  - id: 3
+    description: "Apply the token guard to the GET /api/users route."
+  - id: 4
+    description: "Return 401 with a JSON error body for unauthenticated requests."
+  - id: 5
+    description: "Write tests/test_auth.py covering valid, missing, expired, and tampered tokens."
+  - id: 6
+    description: "Verify all tests pass, including the pre-existing tests/test_users.py."
+
+acceptance_criteria:
+  - id: ac-1
+    criterion: "pytest tests/ exits with code 0"
+    automated: true
+  - id: ac-2
+    criterion: "app/auth.py exists"
+    automated: true
+  - id: ac-3
+    criterion: "tests/test_auth.py exists"
+    automated: true
+  - id: ac-4
+    criterion: "GET /api/users without Authorization header returns 401"
+    automated: true
+  - id: ac-5
+    criterion: "GET /api/users with valid Bearer token returns 200"
+    automated: true
+  - id: ac-6
+    criterion: "No existing test in tests/test_users.py is broken"
+    automated: true
+
+hidden_edge_cases:
+  - id: hec-1
+    description: "Authorization header present but empty string"
+    input: {"Authorization": ""}
+    expected: "401 response"
+  - id: hec-2
+    description: "Token signed with a different secret"
+    input: {"Authorization": "Bearer <token-wrong-secret>"}
+    expected: "401 response"
+  - id: hec-3
+    description: "Bearer prefix capitalised differently (bearer vs Bearer)"
+    input: {"Authorization": "bearer <valid-token>"}
+    expected: "200 response (case-insensitive prefix)"
+
+setup_commands:
+  - "pip install -r requirements.txt"
+
+eval_commands:
+  - "python -m pytest tests/ -q 2>&1"
+  - "python -c \"from app import create_app; print('import OK')\""
+
+expected_artifacts:
+  - "app/auth.py"
+  - "tests/test_auth.py"
+
+timeout_seconds: 240
+
+reference_solution: "../solutions/add-jwt-auth-002.py"
+rubric: "../rubrics/add-jwt-auth-002.yaml"
